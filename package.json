@@ -1,0 +1,20 @@
+{
+  "name": "devtinder",
+  "version": "1.0.0",
+  "description": "Tinder for Devs",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon /src/app.js",
+    "start": "nodemon /src/app.js"
+  },
+  "keywords": [
+    "nodejs",
+    "javascript",
+    "expressjs"
+  ],
+  "author": "Amit Garge",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
