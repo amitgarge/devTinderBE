@@ -1,11 +1,4 @@
-const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-const isStrongPassword = (password) =>
-  password.length >= 8 &&
-  /[A-Z]/.test(password) &&
-  /[a-z]/.test(password) &&
-  /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password) &&
-  /\d/.test(password) &&
-  !/\s/.test(password);
+const validator = require("validator");
 
 const validateSignup = (data) => {
   const errors = [];
@@ -18,11 +11,11 @@ const validateSignup = (data) => {
     errors.push("Last name must be at least 2 characters");
   }
 
-  if (!data.email || !isValidEmail(data.email)) {
+  if (!data.email || !validator.isEmail(data.email)) {
     errors.push("Invalid email format");
   }
 
-  if (!data.password || !isStrongPassword(data.password)) {
+  if (!data.password || !validator.isStrongPassword(data.password)) {
     errors.push(
       "Password must be at least 8 chars, include upper, lower and number"
     );
@@ -56,6 +49,10 @@ const validateUpdate = (data) => {
 
   if (data.skills && !Array.isArray(data.skills)) {
     errors.push("Skills must be an array");
+  }
+
+  if (!validator.isURL(data.photoURL)) {
+    errors.push("Enter a valid URL");
   }
 
   return errors;

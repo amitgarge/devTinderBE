@@ -1,6 +1,8 @@
 const express = require("express");
 const connectDB = require("./src/config/database");
 const User = require("./src/models/user");
+const bcrypt = require("bcrypt");
+const validator = require("validator");
 
 const {
   validateSignup,
@@ -43,18 +45,68 @@ app.delete("/user", async (req, res) => {
   }
 });
 
+app.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    if (!validator.isEmail(email)) {
+      throw new Error("Enter a valid email ID");
+    }
+
+    const user = await User.findOne({email});
+    if (!user) {
+      throw new Error("Invalid Credentials");
+    }
+
+    const isPasswordCorrect = await bcrypt.compare(password, user.password);
+    if (!isPasswordCorrect) {
+      throw new Error("Invalid Credentials");
+    } else {
+      res.send("Login Successful");
+    }
+  } catch (error) {
+    res.status(400).send("ERROR: " + error.message);
+  }
+});
+
 app.post("/signup", async (req, res) => {
+  //Validate the data
   const errors = validateSignup(req.body);
   if (errors.length > 0) {
     return res.status(400).json({ errors });
   }
-
   try {
-    const user = new User(req.body);
+    const {
+      firstName,
+      lastName,
+      email,
+      password,
+      age,
+      gender,
+      about,
+      skills,
+      photoURL,
+    } = req.body;
+
+    //Encrypt
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const user = new User({
+      firstName,
+      lastName,
+      email,
+      password: passwordHash,
+      age,
+      gender,
+      about,
+      skills,
+      photoURL,
+    });
+
     await user.save();
     res.send("User Details Saved Successfully");
   } catch (err) {
-    res.status(400).send("Error while saving the user details");
+    res.status(400).send("Error while saving the user details" + err.message);
   }
 });
 
