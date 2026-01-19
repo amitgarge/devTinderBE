@@ -3,6 +3,7 @@ const connectDB = require("./src/config/database");
 const User = require("./src/models/user");
 const bcrypt = require("bcrypt");
 const validator = require("validator");
+var cookieparser = require("cookie-parser");
 
 const {
   validateSignup,
@@ -12,6 +13,7 @@ const {
 const app = express();
 
 app.use(express.json());
+app.use(cookieparser());
 
 app.get("/user", async (req, res) => {
   try {
@@ -62,6 +64,7 @@ app.post("/login", async (req, res) => {
     if (!isPasswordCorrect) {
       throw new Error("Invalid Credentials");
     } else {
+      res.cookie("token", "ahsdfjkhakjsdfhkjafasdfasdfasdf")
       res.send("Login Successful");
     }
   } catch (error) {
@@ -143,6 +146,12 @@ app.patch("/user/:userId", async (req, res) => {
     res.status(400).send("Update Failed: " + err.message);
   }
 });
+
+app.get("/profile", (req,res)=>{
+  const cookies = req.cookies;
+  console.log(cookies);
+  res.send("Inside Profile");
+})
 
 connectDB()
   .then(() => {
