@@ -17,7 +17,7 @@ const validateSignup = (data) => {
 
   if (!data.password || !validator.isStrongPassword(data.password)) {
     errors.push(
-      "Password must be at least 8 chars, include upper, lower and number"
+      "Password must be at least 8 chars, include upper, lower and number",
     );
   }
 
@@ -39,8 +39,20 @@ const validateSignup = (data) => {
 const validateUpdate = (data) => {
   const errors = [];
 
-  if (data.age && (!Number.isInteger(data.age) || data.age < 18)) {
-    errors.push("Age must be a number and at least 18");
+  if (data.firstName && data.firstName.length < 2) {
+    errors.push("First name must be at least 2 characters");
+  }
+
+  if (data.lastName && data.lastName.length < 2) {
+    errors.push("Last name must be at least 2 characters");
+  }
+
+  if (data.age !== undefined) {
+    // handle string numbers too
+    const ageNum = typeof data.age === "string" ? Number(data.age) : data.age;
+    if (!Number.isInteger(ageNum) || ageNum < 18) {
+      errors.push("Age must be an integer and at least 18");
+    }
   }
 
   if (data.gender && !["male", "female", "others"].includes(data.gender)) {
@@ -51,7 +63,7 @@ const validateUpdate = (data) => {
     errors.push("Skills must be an array");
   }
 
-  if (!validator.isURL(data.photoURL)) {
+  if (data.photoURL && !validator.isURL(data.photoURL)) {
     errors.push("Enter a valid URL");
   }
 
