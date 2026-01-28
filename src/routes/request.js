@@ -2,6 +2,7 @@ const express = require("express");
 const { userAuth } = require("../middlewares/auth");
 const User = require("../models/user");
 const ConnectionRequest = require("../models/connectionRequest");
+const mongoose = require("mongoose");
 
 const requestsRouter = express.Router();
 
@@ -16,13 +17,24 @@ requestsRouter.post(
 
       const allowedStatus = ["ignored", "interested"];
 
-      if (!allowedStatus.includes(req.params.status)) {
-        res.status(400).send("Invalid Status");
+      if (!allowedStatus.includes(status)) {
+        return res.status(400).send("Invalid Status");
       }
 
-      const toUser = await User.findOne(req.params.toUserId);
+      const toUser = await User.findOne({ _id: toUserId });
       if (!toUser) {
-        res.status(400).send("User does not exist!");
+        return res.status(400).send("User does not exist!");
+      }
+
+      const isRequestAlreadyExists = await ConnectionRequest.findOne({
+        $or: [
+          { fromUserId, toUserId },
+          { fromUserId: toUserId, toUserId: fromUserId },
+        ],
+      });
+
+      if (isRequestAlreadyExists) {
+        return res.status(400).send("Connection already exists!");
       }
 
       const loggedInuser = req.user;
@@ -35,12 +47,15 @@ requestsRouter.post(
 
       const data = await connectionRequestData.save();
 
-      res.send({
-        message: `Connection request sent successfully`,
+      return res.json({
+        message:
+          status === "interested"
+            ? "Connection Request Sent Successfully"
+            : "Connection Request Ignored Successfully",
         data,
       });
     } catch (error) {
-      res.status(400).send("ERROR: " + error.message);
+      return res.status(400).send("ERROR: " + error.message);
     }
   },
 );

@@ -22,6 +22,15 @@ const connectionRequestSchema = mongoose.Schema(
   },
 );
 
+connectionRequestSchema.index({ fromUserId: 1, toUserId: 1 });
+
+connectionRequestSchema.pre("save", async function () {
+  const connectionRequest = this;
+  if (connectionRequest.fromUserId.equals(connectionRequest.toUserId)) {
+    throw new Error("Request cannot be sent to the same person.");
+  }
+});
+
 const ConnectionRequest = mongoose.model(
   "ConnectionRequest",
   connectionRequestSchema,
