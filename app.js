@@ -5,6 +5,7 @@ const cookieParser = require("cookie-parser");
 const authRouter = require("./src/routes/auth");
 const profileRouter = require("./src/routes/profile");
 const requestsRouter = require("./src/routes/request");
+const userRouter = require("./src/routes/user");
 
 const app = express();
 
@@ -15,6 +16,7 @@ app.use(cookieParser());
 app.use("/", authRouter);
 app.use("/", profileRouter);
 app.use("/", requestsRouter);
+app.use("/",userRouter);
 
 // fallback
 app.use((req, res) => res.status(404).send("Not Found"));

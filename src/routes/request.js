@@ -67,10 +67,10 @@ requestsRouter.post(
     try {      
 
       const loggedInUser = req.user;
-      const { status, requestId } = req.params;
+      const { status, requestId } = req.params;      
 
-      const allowedStatus = ["accepted, rejected"];
-      if (!allowedStatus.includes(status)) {
+      const allowedStatus = ["accepted", "rejected"];
+      if (!allowedStatus.includes(status)) {        
         return res.status(400).send({ message: "Invalid status" });
       }
 
@@ -82,7 +82,7 @@ requestsRouter.post(
       if (!validateRequestDetails) {
         return res.status(404).send({ message: "Request not found" });
       }
-      validateRequestDetails.status = "accepted";
+      validateRequestDetails.status = status;
       const data = await validateRequestDetails.save();
 
       res.json({
