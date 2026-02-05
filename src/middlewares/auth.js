@@ -8,7 +8,7 @@ const userAuth = async (req, res, next) => {
     }
         
     const { token } = req.cookies || {};
-    if (!token) return res.status(401).send("ERROR: Missing token");
+    if (!token) return res.status(401).send({message: "Missing token"});
 
     const decodedObj = jwt.verify(token, "DevTinder@123");
     if (!decodedObj) {
@@ -25,7 +25,7 @@ const userAuth = async (req, res, next) => {
     req.user = user;
     next();
   } catch (err) {
-    return res.status(400).send("ERROR: " + err.message);
+    return res.status(400).send({message: err.message});
   }
 };
 

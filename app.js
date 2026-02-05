@@ -16,10 +16,10 @@ app.use(cookieParser());
 app.use("/", authRouter);
 app.use("/", profileRouter);
 app.use("/", requestsRouter);
-app.use("/",userRouter);
+app.use("/", userRouter);
 
 // fallback
-app.use((req, res) => res.status(404).send("Not Found"));
+app.use((req, res) => res.status(404).send({ message: "Route Not Found" }));
 
 connectDB()
   .then(() => {

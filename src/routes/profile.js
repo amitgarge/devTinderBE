@@ -11,7 +11,7 @@ profileRouter.get("/profile/view", userAuth, async (req, res) => {
   try {
     res.send(req.user);
   } catch (error) {
-    return res.status(400).send("ERROR: " + error);
+    return res.status(400).send({ message: error.message });
   }
 });
 
@@ -32,7 +32,7 @@ profileRouter.patch("/profile/edit", userAuth, async (req, res) => {
     );
 
     if (!isRequestBodyValid) {
-      return res.status(400).send("Invalid Edit request");
+      return res.status(400).send({ message: "Invalid Edit request" });
     }
 
     const errors = validateUpdate(req.body);
@@ -47,10 +47,10 @@ profileRouter.patch("/profile/edit", userAuth, async (req, res) => {
       );
       await loggedInUser.save();
 
-      return res.send("User Details Updated successfully!");
+      return res.send({ message: "User Details Updated successfully!" });
     }
   } catch (error) {
-    return res.status(400).send("ERROR: " + error.message);
+    return res.status(400).send({ message: error.message });
   }
 });
 
@@ -62,7 +62,7 @@ profileRouter.patch("/profile/password", userAuth, async (req, res) => {
     );
 
     if (!isValidRequest) {
-      return res.status(400).send("Invalid Request");
+      return res.status(400).send({ message: "Invalid Request" });
     } else {
       const user = req.user;
       const isCurrentPassowordCorrect = await bcrypt.compare(
@@ -70,25 +70,28 @@ profileRouter.patch("/profile/password", userAuth, async (req, res) => {
         user.password,
       );
       if (!isCurrentPassowordCorrect) {
-        return res.status(400).send("Current Password is not correct");
+        return res
+          .status(400)
+          .send({ message: "Current Password is not correct" });
       } else {
-        const isNewPasswordStrong = validator.isStrongPassword(req.body.newPassword);
+        const isNewPasswordStrong = validator.isStrongPassword(
+          req.body.newPassword,
+        );
         if (!isNewPasswordStrong) {
-          return res
-            .status(400)
-            .send(
+          return res.status(400).send({
+            message:
               "New Password must be at least 8 chars, include upper, lower and number and symbol",
-            );
+          });
         } else {
           const newPasswordHash = await bcrypt.hash(req.body.newPassword, 10);
           user.password = newPasswordHash;
           await user.save();
-          return res.send("Password Updated Successfully!");
+          return res.send({ message: "Password Updated Successfully!" });
         }
       }
     }
   } catch (error) {
-    return res.status(400).send("ERROR: " + error.message);
+    return res.status(400).send({ message: error.message });
   }
 });
 

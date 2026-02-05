@@ -18,12 +18,12 @@ requestsRouter.post(
       const allowedStatus = ["ignored", "interested"];
 
       if (!allowedStatus.includes(status)) {
-        return res.status(400).send("Invalid Status");
+        return res.status(400).send({ message: "Invalid Status" });
       }
 
       const toUser = await User.findOne({ _id: toUserId });
       if (!toUser) {
-        return res.status(400).send("User does not exist!");
+        return res.status(400).send({ message: "User does not exist!" });
       }
 
       const isRequestAlreadyExists = await ConnectionRequest.findOne({
@@ -34,7 +34,7 @@ requestsRouter.post(
       });
 
       if (isRequestAlreadyExists) {
-        return res.status(400).send("Connection already exists!");
+        return res.status(400).send({ message: "Connection already exists!" });
       }
 
       const loggedInuser = req.user;
@@ -55,7 +55,7 @@ requestsRouter.post(
         data,
       });
     } catch (error) {
-      return res.status(400).send("ERROR: " + error.message);
+      return res.status(400).send({ message: "ERROR: " + error.message });
     }
   },
 );
@@ -64,13 +64,12 @@ requestsRouter.post(
   "/request/review/:status/:requestId",
   userAuth,
   async (req, res) => {
-    try {      
-
+    try {
       const loggedInUser = req.user;
-      const { status, requestId } = req.params;      
+      const { status, requestId } = req.params;
 
       const allowedStatus = ["accepted", "rejected"];
-      if (!allowedStatus.includes(status)) {        
+      if (!allowedStatus.includes(status)) {
         return res.status(400).send({ message: "Invalid status" });
       }
 
@@ -90,7 +89,7 @@ requestsRouter.post(
         data,
       });
     } catch (error) {
-      return res.status(400).send("ERROR: " + error.message);
+      return res.status(400).send({ message: "ERROR: " + error.message });
     }
   },
 );
