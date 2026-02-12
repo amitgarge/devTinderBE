@@ -12,7 +12,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: "http://localhost:5176",
+    origin: "http://localhost:5173",
     credentials: true,
   }),
 );
@@ -31,8 +31,8 @@ app.use((req, res) => res.status(404).send({ message: "Route Not Found" }));
 connectDB()
   .then(() => {
     console.log("Database connection successful");
-    app.listen(3000, "127.0.0.1", () => {
-      console.log("Server is running and listening on 127.0.0.1:3000");
+    app.listen(3000, "localhost", () => {
+      console.log("Server is running and listening on localhost:3000");
     });
   })
   .catch((err) => {

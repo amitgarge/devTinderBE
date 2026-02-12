@@ -65,6 +65,7 @@ const userSchema = new mongoose.Schema(
     },
     photoURL: {
       type: String,
+      default: "https://www.citypng.com/public/uploads/preview/hd-man-user-illustration-icon-transparent-png-701751694974843ybexneueic.png",
       validate(value) {
         if (!validator.isURL(value)) {
           throw new Error("Enter a valid URL");

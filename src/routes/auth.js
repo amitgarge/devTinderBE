@@ -24,7 +24,12 @@ authRouter.post("/login", async (req, res) => {
       throw new Error("Invalid Credentials");
     } else {
       const token = await user.getJWT();
-      res.cookie("token", token, { maxAge: 7 * 24 * 60 * 60 * 1000 });
+      res.cookie("token", token, {
+        httpOnly: true,
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        sameSite: "lax",
+        secure: false,
+      });
       res.json({ message: "Login Successful", data: user });
     }
   } catch (error) {
@@ -76,9 +81,13 @@ authRouter.post("/signup", async (req, res) => {
 });
 
 authRouter.post("/logout", (req, res) => {
-  res.cookie("token", null, {
-    expires: new Date(Date.now()),
+  res.clearCookie("token", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: false,
+    path: "/",
   });
+
   return res.send({ message: "Logged out successfully!" });
 });
 

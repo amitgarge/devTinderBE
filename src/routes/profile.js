@@ -8,8 +8,8 @@ const validator = require("validator");
 const profileRouter = express.Router();
 
 profileRouter.get("/profile/view", userAuth, async (req, res) => {
-  try {
-    res.send(req.user);
+  try {    
+    res.json(req.user);
   } catch (error) {
     return res.status(400).send({ message: error.message });
   }
@@ -45,9 +45,9 @@ profileRouter.patch("/profile/edit", userAuth, async (req, res) => {
       Object.keys(req.body).forEach(
         (key) => (loggedInUser[key] = req.body[key]),
       );
-      await loggedInUser.save();
+      const data = await loggedInUser.save();
 
-      return res.send({ message: "User Details Updated successfully!" });
+      return res.send({ message: "User Details Updated successfully!", data });
     }
   } catch (error) {
     return res.status(400).send({ message: error.message });
