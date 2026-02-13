@@ -21,16 +21,32 @@ const validateSignup = (data) => {
     );
   }
 
-  if (!Number.isInteger(data.age) || data.age < 18) {
-    errors.push("Age must be a number and at least 18");
+  if (data.age !== undefined) {
+    const age = Number(data.age);
+    if (!Number.isInteger(age) || age < 18) {
+      errors.push("Age must be a number and at least 18");
+    }
   }
 
-  if (!["male", "female", "others"].includes(data.gender)) {
-    errors.push("Invalid gender value");
+  if (data.gender !== undefined) {
+    const allowedGenders = ["male", "female", "others"];
+    if (!allowedGenders.includes(data.gender)) {
+      errors.push("Invalid gender value");
+    }
   }
 
-  if (!Array.isArray(data.skills) || data.skills.length === 0) {
-    errors.push("Atleast one skill is required");
+  if (data.skills !== undefined) {
+    if (!Array.isArray(data.skills)) {
+      errors.push("Skills must be an array");
+    } else {
+      const invalid = data.skills.some(
+        (skill) => typeof skill !== "string" || !skill.trim(),
+      );
+
+      if (invalid) {
+        errors.push("Each skill must be a non-empty string");
+      }
+    }
   }
 
   return errors;

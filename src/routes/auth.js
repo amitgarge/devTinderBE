@@ -71,8 +71,15 @@ authRouter.post("/signup", async (req, res) => {
       photoURL,
     });
 
-    await user.save();
-    res.json({ message: "User Details Saved Successfully" });
+    const savedUser = await user.save();
+    const token = await savedUser.getJWT();
+    res.cookie("token", token, {
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      sameSite: "lax",
+      secure: false,
+    });
+    res.json({ message: "User Details Saved Successfully", data: savedUser });
   } catch (err) {
     return res
       .status(400)

@@ -41,7 +41,6 @@ const userSchema = new mongoose.Schema(
     },
     age: {
       type: Number,
-      required: true,
       min: 18,
       max: 75,
     },
@@ -49,7 +48,6 @@ const userSchema = new mongoose.Schema(
       type: String,
       lowercase: true,
       enum: ["male", "female", "others"],
-      required: true,
     },
     about: {
       type: String,
@@ -58,14 +56,11 @@ const userSchema = new mongoose.Schema(
     },
     skills: {
       type: [String],
-      validate: {
-        validator: (v) => v.length > 0,
-        message: "Skills array cannot be empty",
-      },
     },
     photoURL: {
       type: String,
-      default: "https://www.citypng.com/public/uploads/preview/hd-man-user-illustration-icon-transparent-png-701751694974843ybexneueic.png",
+      default:
+        "https://www.citypng.com/public/uploads/preview/hd-man-user-illustration-icon-transparent-png-701751694974843ybexneueic.png",
       validate(value) {
         if (!validator.isURL(value)) {
           throw new Error("Enter a valid URL");
