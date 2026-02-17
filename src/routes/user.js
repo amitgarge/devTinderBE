@@ -1,90 +1,100 @@
 const express = require("express");
 const { userAuth } = require("../middlewares/auth");
+const asyncHandler = require("../util/asyncHandler");
+
 const User = require("../models/user");
 const ConnectionRequest = require("../models/connectionRequest");
+
 const userRouter = express.Router();
 
 const USER_SAFE_DATA = "firstName lastName age gender about skills photoURL";
 
-userRouter.get("/user/requests/received", userAuth, async (req, res) => {
-  try {
-    const loggedInUser = req.user;
+//Received Requests
 
+userRouter.get(
+  "/requests/received",
+  userAuth,
+  asyncHandler(async (req, res) => {
     const pendingRequests = await ConnectionRequest.find({
-      toUserId: loggedInUser._id,
+      toUserId: req.user._id,
       status: "interested",
     }).populate("fromUserId", USER_SAFE_DATA);
 
-    res.json({ message: "Data fetched successfully", data: pendingRequests });
-  } catch (error) {
-    res.status(400).send({message: "ERROR: " + error.message});
-  }
-});
+    res.status(200).json({
+      success: true,
+      message: "Pending requests fetched successfully",
+      data: pendingRequests,
+    });
+  }),
+);
 
-userRouter.get("/user/connections", userAuth, async (req, res) => {
-  try {
-    const loggedInUser = req.user;
 
+//Connections
+userRouter.get(
+  "/connections",
+  userAuth,
+  asyncHandler(async (req, res) => {
     const connections = await ConnectionRequest.find({
       $or: [
-        {
-          fromUserId: loggedInUser,
-          status: "accepted",
-        },
-        {
-          toUserId: loggedInUser,
-          status: "accepted",
-        },
+        { fromUserId: req.user._id, status: "accepted" },
+        { toUserId: req.user._id, status: "accepted" },
       ],
     })
       .populate("fromUserId", USER_SAFE_DATA)
       .populate("toUserId", USER_SAFE_DATA);
 
-    const result = connections.map((row) => {
-      if (row.fromUserId._id.toString() === loggedInUser._id.toString()) {
-        return row.toUserId;
-      }
-      return row.fromUserId;
+    const result = connections.map((row) =>
+      row.fromUserId._id.toString() === req.user._id.toString()
+        ? row.toUserId
+        : row.fromUserId,
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Connections fetched successfully",
+      data: result,
     });
+  }),
+);
 
-    res.json(result);
-  } catch (error) {
-    res.status(400).send({ message: error.message });
-  }
-});
+//Feed
 
-userRouter.get("/user/feed", userAuth, async (req, res) => {
-  try {
-    const loggedInUser = req.user;
-
+userRouter.get(
+  "/feed",
+  userAuth,
+  asyncHandler(async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     let limit = parseInt(req.query.limit) || 10;
     limit = limit > 50 ? 50 : limit;
+
     const skip = (page - 1) * limit;
 
-    const connectionRequestsOfLoggedInUser = await ConnectionRequest.find({
-      $or: [{ fromUserId: loggedInUser._id }, { toUserId: loggedInUser._id }],
+    const connectionRequests = await ConnectionRequest.find({
+      $or: [{ fromUserId: req.user._id }, { toUserId: req.user._id }],
     }).select("fromUserId toUserId");
 
     const hideFromFeed = new Set();
-    connectionRequestsOfLoggedInUser.forEach((request) => {
-      hideFromFeed.add(request.fromUserId);
-      hideFromFeed.add(request.toUserId);
+
+    connectionRequests.forEach((reqDoc) => {
+      hideFromFeed.add(reqDoc.fromUserId.toString());
+      hideFromFeed.add(reqDoc.toUserId.toString());
     });
 
     const users = await User.find({
-      $and: [
-        { _id: { $nin: Array.from(hideFromFeed) } },
-        { _id: { $ne: loggedInUser._id } },
-      ],
+      _id: {
+        $nin: [...hideFromFeed, req.user._id.toString()],
+      },
     })
       .select(USER_SAFE_DATA)
       .skip(skip)
       .limit(limit);
 
-    res.json(users);
-  } catch (error) {
-    res.status(400).send({ message: error.message });
-  }
-});
+    res.status(200).json({
+      success: true,
+      message: "Feed fetched successfully",
+      data: users,
+    });
+  }),
+);
+
 module.exports = userRouter;

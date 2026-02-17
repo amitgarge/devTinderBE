@@ -1,32 +1,29 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/user");
+const AppError = require("../util/AppError");
+const asyncHandler = require("../util/asyncHandler");
 
-const userAuth = async (req, res, next) => {
-  try {
-    if (!req.cookies) {
-      return res.status(401).send("Invalid Token")
-    }
-        
-    const { token } = req.cookies || {};
-    if (!token) return res.status(401).send({message: "Missing token"});
-
-    const decodedObj = jwt.verify(token, "DevTinder@123");
-    if (!decodedObj) {
-      throw new Error("Invalid token");
-    }
-
-    const { _id } = decodedObj;
-
-    const user = await User.findById(_id);
-
-    if (!user) {
-      throw new Error("User Not found");
-    }
-    req.user = user;
-    next();
-  } catch (err) {
-    return res.status(400).send({message: err.message});
+const userAuth = asyncHandler(async (req, res, next) => {
+  if (!req.cookies) {
+    return res.status(401).send("Invalid Token");
   }
-};
+
+  const { token } = req.cookies || {};
+  if (!token) return next(new AppError("Authentication token missing", 401));
+
+  try {
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
+  } catch (err) {
+    return next(new AppError("Invalid or expired token", 401));
+  }
+  const user = await User.findById(decoded._id);
+
+  if (!user) {
+    return next(new AppError("User no longer exists", 401));
+  }
+
+  req.user = user;
+  next();
+});
 
 module.exports = { userAuth };

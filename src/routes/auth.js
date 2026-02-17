@@ -3,25 +3,28 @@ const validator = require("validator");
 const bcrypt = require("bcrypt");
 const User = require("../models/user");
 const { validateSignup } = require("../util/validators/user.validator");
+const AppError = require("../middlewares/errorHandler");
+const asyncHandler = require("../util/asyncHandler");
 
 const authRouter = express.Router();
 
-authRouter.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+authRouter.post(
+  "/login",
+  asyncHandler(async (req, res) => {
+    const { email, password } = req.body;
 
-  try {
     if (!validator.isEmail(email)) {
-      throw new Error("Enter a valid email ID");
+      return next(new AppError("Enter a valid email ID", 400));
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select("+password");
     if (!user) {
-      throw new Error("Invalid Credentials");
+      return next(new AppError("Invalid credentials", 401));
     }
 
     const isPasswordCorrect = await user.passwordCompare(password);
     if (!isPasswordCorrect) {
-      throw new Error("Invalid Credentials");
+      return next(new AppError("Invalid credentials", 401));
     } else {
       const token = await user.getJWT();
       res.cookie("token", token, {
@@ -30,20 +33,24 @@ authRouter.post("/login", async (req, res) => {
         sameSite: "lax",
         secure: false,
       });
-      res.json({ message: "Login Successful", data: user });
+      res.status(200).json({
+        success: true,
+        message: "Login successful",
+        data: user,
+      });
     }
-  } catch (error) {
-    return res.status(400).send({ message: error.message });
-  }
-});
+  }),
+);
 
-authRouter.post("/signup", async (req, res) => {
-  //Validate the data
-  const errors = validateSignup(req.body);
-  if (errors.length > 0) {
-    return res.status(400).json({ errors });
-  }
-  try {
+authRouter.post(
+  "/signup",
+  asyncHandler(async (req, res, next) => {
+    const errors = validateSignup(req.body);
+
+    if (errors.length > 0) {
+      return next(new AppError(errors.join(", "), 400));
+    }
+
     const {
       firstName,
       lastName,
@@ -56,10 +63,9 @@ authRouter.post("/signup", async (req, res) => {
       photoURL,
     } = req.body;
 
-    //Encrypt
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const user = new User({
+    const user = await User.create({
       firstName,
       lastName,
       email,
@@ -71,31 +77,35 @@ authRouter.post("/signup", async (req, res) => {
       photoURL,
     });
 
-    const savedUser = await user.save();
-    const token = await savedUser.getJWT();
+    const token = await user.getJWT();
+
     res.cookie("token", token, {
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
       sameSite: "lax",
-      secure: false,
+      secure: process.env.NODE_ENV === "production",
     });
-    res.json({ message: "User Details Saved Successfully", data: savedUser });
-  } catch (err) {
-    return res
-      .status(400)
-      .send({ message: "Error while saving the user details" + err.message });
-  }
-});
+
+    res.status(201).json({
+      success: true,
+      message: "User registered successfully",
+      data: user,
+    });
+  }),
+);
 
 authRouter.post("/logout", (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
     sameSite: "lax",
-    secure: false,
-    path: "/",
+    secure: process.env.NODE_ENV === "production",
   });
 
-  return res.send({ message: "Logged out successfully!" });
+  res.status(200).json({
+    success: true,
+    message: "Logged out successfully",
+  });
 });
+
 
 module.exports = authRouter;

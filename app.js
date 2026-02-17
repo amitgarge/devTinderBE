@@ -1,7 +1,10 @@
+require("dotenv").config();
 const express = require("express");
 const connectDB = require("./src/config/database");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
+const errorHandler = require("./src/middlewares/errorHandler");
+const AppError = require("./src/util/AppError");
 
 const authRouter = require("./src/routes/auth");
 const profileRouter = require("./src/routes/profile");
@@ -12,7 +15,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: "http://localhost:5174",
+    origin: "http://localhost:5173",
     credentials: true,
   }),
 );
@@ -20,13 +23,16 @@ app.use(express.json());
 app.use(cookieParser());
 
 // mount routers
-app.use("/", authRouter);
-app.use("/", profileRouter);
-app.use("/", requestsRouter);
-app.use("/", userRouter);
+app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/profile", profileRouter);
+app.use("/api/v1/request", requestsRouter);
+app.use("/api/v1/user", userRouter);
 
-// fallback
-app.use((req, res) => res.status(404).send({ message: "Route Not Found" }));
+app.use((req, res, next) => {
+  next(new AppError(`Route ${req.originalUrl} not found`, 404));
+});
+
+app.use(errorHandler);
 
 connectDB()
   .then(() => {

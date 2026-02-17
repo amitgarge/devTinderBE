@@ -1,23 +1,32 @@
 const express = require("express");
-const { userAuth } = require("../middlewares/auth");
-const { validateUpdate } = require("../util/validators/user.validator");
-const User = require("../models/user");
 const bcrypt = require("bcrypt");
 const validator = require("validator");
 
+const { userAuth } = require("../middlewares/auth");
+const { validateUpdate } = require("../util/validators/user.validator");
+const asyncHandler = require("../util/asyncHandler");
+const AppError = require("../util/AppError");
+
+const User = require("../models/user");
+
 const profileRouter = express.Router();
 
-profileRouter.get("/profile/view", userAuth, async (req, res) => {
-  try {    
-    res.json(req.user);
-  } catch (error) {
-    return res.status(400).send({ message: error.message });
-  }
+//View Profile
+profileRouter.get("/view", userAuth, (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Profile fetched successfully",
+    data: req.user,
+  });
 });
 
-profileRouter.patch("/profile/edit", userAuth, async (req, res) => {
-  try {
-    const allowedFieldsToEdit = [
+//Edit Profile
+
+profileRouter.patch(
+  "/edit",
+  userAuth,
+  asyncHandler(async (req, res, next) => {
+    const allowedFields = [
       "firstName",
       "lastName",
       "age",
@@ -27,72 +36,74 @@ profileRouter.patch("/profile/edit", userAuth, async (req, res) => {
       "photoURL",
     ];
 
-    const isRequestBodyValid = Object.keys(req.body).every((key) =>
-      allowedFieldsToEdit.includes(key),
+    const isValidUpdate = Object.keys(req.body).every((field) =>
+      allowedFields.includes(field),
     );
 
-    if (!isRequestBodyValid) {
-      return res.status(400).send({ message: "Invalid Edit request" });
+    if (!isValidUpdate) {
+      return next(new AppError("Invalid edit request", 400));
     }
 
     const errors = validateUpdate(req.body);
-
     if (errors.length > 0) {
-      return res.status(400).send(errors);
-    } else {
-      const loggedInUser = req.user;
-
-      Object.keys(req.body).forEach(
-        (key) => (loggedInUser[key] = req.body[key]),
-      );
-      const data = await loggedInUser.save();
-
-      return res.send({ message: "User Details Updated successfully!", data });
+      return next(new AppError(errors.join(", "), 400));
     }
-  } catch (error) {
-    return res.status(400).send({ message: error.message });
-  }
-});
 
-profileRouter.patch("/profile/password", userAuth, async (req, res) => {
-  try {
-    const acceptedFields = ["currentPassword", "newPassword"];
-    const isValidRequest = Object.keys(req.body).every((key) =>
-      acceptedFields.includes(key),
-    );
+    const user = req.user;
 
-    if (!isValidRequest) {
-      return res.status(400).send({ message: "Invalid Request" });
-    } else {
-      const user = req.user;
-      const isCurrentPassowordCorrect = await bcrypt.compare(
-        req.body.currentPassword,
-        user.password,
+    Object.keys(req.body).forEach((field) => {
+      user[field] = req.body[field];
+    });
+
+    const updatedUser = await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      data: updatedUser,
+    });
+  }),
+);
+
+//Change Password
+
+profileRouter.patch(
+  "/password",
+  userAuth,
+  asyncHandler(async (req, res, next) => {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return next(
+        new AppError("Current password and new password are required", 400),
       );
-      if (!isCurrentPassowordCorrect) {
-        return res
-          .status(400)
-          .send({ message: "Current Password is not correct" });
-      } else {
-        const isNewPasswordStrong = validator.isStrongPassword(
-          req.body.newPassword,
-        );
-        if (!isNewPasswordStrong) {
-          return res.status(400).send({
-            message:
-              "New Password must be at least 8 chars, include upper, lower and number and symbol",
-          });
-        } else {
-          const newPasswordHash = await bcrypt.hash(req.body.newPassword, 10);
-          user.password = newPasswordHash;
-          await user.save();
-          return res.send({ message: "Password Updated Successfully!" });
-        }
-      }
     }
-  } catch (error) {
-    return res.status(400).send({ message: error.message });
-  }
-});
+
+    const user = await User.findById(req.user._id).select("+password");
+
+    const isCorrect = await bcrypt.compare(currentPassword, user.password);
+
+    if (!isCorrect) {
+      return next(new AppError("Current password is incorrect", 400));
+    }
+
+    if (!validator.isStrongPassword(newPassword)) {
+      return next(
+        new AppError(
+          "New password must include upper, lower, number and symbol",
+          400,
+        ),
+      );
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Password updated successfully",
+    });
+  }),
+);
 
 module.exports = profileRouter;
