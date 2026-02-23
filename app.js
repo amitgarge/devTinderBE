@@ -13,16 +13,18 @@ const userRouter = require("./src/routes/user");
 
 const app = express();
 
+// CORS configuration (production-ready)
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: process.env.CLIENT_URL,
     credentials: true,
-  }),
+  })
 );
+
 app.use(express.json());
 app.use(cookieParser());
 
-// mount routers
+// Routes
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/profile", profileRouter);
 app.use("/api/v1/request", requestsRouter);
@@ -34,11 +36,14 @@ app.use((req, res, next) => {
 
 app.use(errorHandler);
 
+// Start server
+const PORT = process.env.PORT || 3000;
+
 connectDB()
   .then(() => {
     console.log("Database connection successful");
-    app.listen(3000, "localhost", () => {
-      console.log("Server is running and listening on localhost:3000");
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
     });
   })
   .catch((err) => {
