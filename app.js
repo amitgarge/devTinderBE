@@ -13,10 +13,7 @@ const userRouter = require("./src/routes/user");
 
 const app = express();
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  process.env.CLIENT_URL,
-];
+const allowedOrigins = ["http://localhost:5173", process.env.CLIENT_URL];
 
 app.use(
   cors({
@@ -28,11 +25,8 @@ app.use(
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
-  })
+  }),
 );
-
-// IMPORTANT: handle preflight explicitly
-app.options("*", cors());
 
 app.use(express.json());
 app.use(cookieParser());
