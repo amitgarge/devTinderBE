@@ -13,13 +13,26 @@ const userRouter = require("./src/routes/user");
 
 const app = express();
 
-// CORS configuration (production-ready)
+const allowedOrigins = [
+  "http://localhost:5173",
+  process.env.CLIENT_URL,
+];
+
 app.use(
   cors({
-    origin: ["http://localhost:5173", process.env.CLIENT_URL],
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
-  }),
+  })
 );
+
+// IMPORTANT: handle preflight explicitly
+app.options("*", cors());
 
 app.use(express.json());
 app.use(cookieParser());
