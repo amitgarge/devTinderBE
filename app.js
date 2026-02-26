@@ -1,4 +1,9 @@
 require("dotenv").config();
+const envFile =
+  process.env.NODE_ENV === "production" ? ".env.production" : ".env.local";
+
+dotenv.config({ path: envFile });
+
 const express = require("express");
 const connectDB = require("./src/config/database");
 const cookieParser = require("cookie-parser");
@@ -13,7 +18,7 @@ const userRouter = require("./src/routes/user");
 
 const app = express();
 
-const allowedOrigins = ["http://localhost:5173", process.env.CLIENT_URL];
+const allowedOrigins = [process.env.CLIENT_URL];
 
 app.use(
   cors({

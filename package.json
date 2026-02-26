@@ -4,8 +4,8 @@
   "description": "Tinder for Devs",
   "main": "app.js",
   "scripts": {
-    "dev": "nodemon app.js",
-    "start": "node app.js"
+    "dev": "NODE_ENV=development nodemon app.js",
+    "start": "NODE_ENV=production node app.js"
   },
   "keywords": ["nodejs", "javascript", "expressjs"],
   "author": "Amit Garge",
