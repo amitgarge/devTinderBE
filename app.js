@@ -6,9 +6,14 @@ const envFile =
 dotenv.config({ path: envFile });
 
 const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const { initSocket } = require("./src/socket");
+
 const connectDB = require("./src/config/database");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
+
 const errorHandler = require("./src/middlewares/errorHandler");
 const AppError = require("./src/util/AppError");
 
@@ -19,15 +24,19 @@ const userRouter = require("./src/routes/user");
 
 const app = express();
 
+const server = http.createServer(app);
+
 const allowedOrigins = [process.env.CLIENT_URL];
 
 app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
+
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
+
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
@@ -53,9 +62,11 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 3000;
 
 connectDB()
-  .then(() => {
+  .then(() => {    
     console.log("Database connection successful");
-    app.listen(PORT, () => {
+    initSocket(server);
+
+    server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
   })
