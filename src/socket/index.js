@@ -2,6 +2,9 @@ const { Server } = require("socket.io");
 const cookie = require("cookie");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const Message = require("../models/message");
+const ConnectionRequest = require("../models/connectionRequest");
+const User = require("../models/user");
 
 function generateRoomId(user1, user2) {
   const sorted = [user1, user2].sort().join("_");
@@ -53,15 +56,44 @@ const initSocket = (server) => {
     //save socket <-> user mapping
     onlineUsers.set(userId, socket.id);
 
+    // send full online list to THIS user
+    socket.emit("online_users", Array.from(onlineUsers.keys()));
+
+    // notify others
+    socket.broadcast.emit("user_online", { userId });
+
     //JOIN ROOM EVENT
 
-    socket.on("join_room", (data) => {
+    socket.on("join_room", async (data) => {
       if (!data || !data.targetUserId) {
         console.log("join_room called without targetUserId");
         return;
       }
       const { targetUserId } = data;
       const currentUserId = socket.userId;
+
+      // CHECK IF CONNECTION EXISTS
+      const connection = await ConnectionRequest.findOne({
+        $or: [
+          {
+            fromUserId: currentUserId,
+            toUserId: targetUserId,
+            status: "accepted",
+          },
+
+          {
+            fromUserId: targetUserId,
+            toUserId: currentUserId,
+            status: "accepted",
+          },
+        ],
+      });
+
+      if (!connection) {
+        socket.emit("error", "Not authorized to chat");
+
+        return;
+      }
 
       //create unique room Id
       const roomId = generateRoomId(socket.userId, targetUserId);
@@ -71,37 +103,80 @@ const initSocket = (server) => {
       console.log(`User ${currentUserId} joined room ${roomId}`);
     });
 
-    socket.on("send_message", (data) => {
+    socket.on("send_message", async (data) => {
       try {
         const { targetUserId, text } = data;
 
-        if (!targetUserId || !text) {
-          return;
-        }
+        if (!targetUserId || !text) return;
 
         const senderId = socket.userId;
 
+        // CHECK IF CONNECTION EXISTS
+        const connection = await ConnectionRequest.findOne({
+          $or: [
+            {
+              fromUserId: senderId,
+              toUserId: targetUserId,
+              status: "accepted",
+            },
+
+            {
+              fromUserId: targetUserId,
+              toUserId: senderId,
+              status: "accepted",
+            },
+          ],
+        });
+
+        if (!connection) {
+          socket.emit("error", "Not authorized to chat");
+
+          return;
+        }
+
         const roomId = generateRoomId(senderId, targetUserId);
 
-        const messagePayload = {
+        // SAVE TO DATABASE
+        const newMessage = await Message.create({
           senderId,
           targetUserId,
           text,
-          createdAt: new Date(),
-        };
+        });
 
-        //emit to everyone in the room
-        io.to(roomId).emit("receive_message", messagePayload);
-
-        console.log("Message sent: ", messagePayload);
+        // emit saved message
+        io.to(roomId).emit("receive_message", newMessage);
       } catch (error) {
-        console.error(error);
+        console.error("Send message error:", error);
       }
     });
 
-    socket.on("disconnect", () => {
+    socket.on("disconnect", async () => {
       console.log("User disconnected:", socket.userId, "| socket:", socket.id);
       onlineUsers.delete(userId);
+      try {
+        await User.findByIdAndUpdate(userId, {
+          lastSeen: new Date(),
+        });
+        socket.broadcast.emit("user_offline", {
+          userId,
+          lastSeen: new Date(),
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    });
+
+    socket.on("typing", ({ targetUserId }) => {
+      const roomId = generateRoomId(socket.userId, targetUserId);
+
+      socket.to(roomId).emit("user_typing", {
+        userId: socket.userId,
+      });
+    });
+    socket.on("stop_typing", ({ targetUserId }) => {
+      const roomId = generateRoomId(socket.userId, targetUserId);
+
+      socket.to(roomId).emit("user_stop_typing");
     });
   });
 };
@@ -118,8 +193,11 @@ const getReceiverSocketId = (userId) => {
   return onlineUsers.get(userId);
 };
 
+const isUserOnline = (userId) => onlineUsers.has(userId);
+
 module.exports = {
   initSocket,
   getIO,
   getReceiverSocketId,
+  isUserOnline,
 };

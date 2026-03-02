@@ -4,6 +4,7 @@ const asyncHandler = require("../util/asyncHandler");
 
 const User = require("../models/user");
 const ConnectionRequest = require("../models/connectionRequest");
+const { isUserOnline } = require("../socket/index");
 
 const userRouter = express.Router();
 
@@ -27,7 +28,6 @@ userRouter.get(
     });
   }),
 );
-
 
 //Connections
 userRouter.get(
@@ -96,5 +96,11 @@ userRouter.get(
     });
   }),
 );
+
+userRouter.get("/online/:userId", userAuth, (req, res) => {
+  res.json({
+    online: isUserOnline(req.params.userId),
+  });
+});
 
 module.exports = userRouter;

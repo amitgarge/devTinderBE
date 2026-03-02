@@ -21,6 +21,7 @@ const authRouter = require("./src/routes/auth");
 const profileRouter = require("./src/routes/profile");
 const requestsRouter = require("./src/routes/request");
 const userRouter = require("./src/routes/user");
+const messageRouter = require("./src/routes/message");
 
 const app = express();
 
@@ -51,6 +52,7 @@ app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/profile", profileRouter);
 app.use("/api/v1/request", requestsRouter);
 app.use("/api/v1/user", userRouter);
+app.use("/api/v1/messages", messageRouter);
 
 app.use((req, res, next) => {
   next(new AppError(`Route ${req.originalUrl} not found`, 404));
@@ -62,7 +64,7 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 3000;
 
 connectDB()
-  .then(() => {    
+  .then(() => {
     console.log("Database connection successful");
     initSocket(server);
 
