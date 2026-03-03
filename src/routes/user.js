@@ -103,4 +103,11 @@ userRouter.get("/online/:userId", userAuth, (req, res) => {
   });
 });
 
+userRouter.get("/last-seen/:userId", async (req, res) => {
+  const user = await User.findById(req.params.userId)
+    .select("lastSeen");
+
+  res.json({ lastSeen: user?.lastSeen || null });
+});
+
 module.exports = userRouter;

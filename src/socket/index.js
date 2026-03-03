@@ -56,8 +56,9 @@ const initSocket = (server) => {
     //save socket <-> user mapping
     onlineUsers.set(userId, socket.id);
 
-    // send full online list to THIS user
-    socket.emit("online_users", Array.from(onlineUsers.keys()));
+    socket.on("get_online_users", () => {
+      socket.emit("online_users", Array.from(onlineUsers.keys()));
+    });
 
     // notify others
     socket.broadcast.emit("user_online", { userId });
@@ -151,18 +152,30 @@ const initSocket = (server) => {
     });
 
     socket.on("disconnect", async () => {
-      console.log("User disconnected:", socket.userId, "| socket:", socket.id);
-      onlineUsers.delete(userId);
       try {
+        if (!socket.userId) return;
+
+        const userId = socket.userId;
+
+        console.log("User disconnected:", userId, "| socket:", socket.id);
+
+        // Remove from online users map
+        onlineUsers.delete(userId);
+
+        const lastSeen = new Date();
+
+        // Update DB
         await User.findByIdAndUpdate(userId, {
-          lastSeen: new Date(),
+          lastSeen,
         });
+
+        // Notify others
         socket.broadcast.emit("user_offline", {
           userId,
-          lastSeen: new Date(),
+          lastSeen,
         });
       } catch (err) {
-        console.error(err);
+        console.error("Disconnect error:", err);
       }
     });
 
