@@ -11,6 +11,7 @@ const userAuth = asyncHandler(async (req, res, next) => {
   const { token } = req.cookies || {};
   if (!token) return next(new AppError("Authentication token missing", 401));
 
+  let decoded;
   try {
     decoded = jwt.verify(token, process.env.JWT_SECRET);
   } catch (err) {

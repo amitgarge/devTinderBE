@@ -1,26 +1,27 @@
 const errorHandler = (err, req, res, next) => {
-  console.error("ERROR: ", err);
-  let statusCode = err.statusCode || 500;
-  let message = err.message || "Somwthing went wrong!";
+  console.error("ERROR:", err);
 
-  //mongo duplicate key error
+  let statusCode = err.statusCode || 500;
+  let message = err.message || "Something went wrong!";
+
+  // Mongo duplicate key
   if (err.code === 11000) {
     statusCode = 400;
     message = "Email already exists";
   }
 
-  //mongoose validation error
-  if (err.name === "validationError") {
+  // Mongoose validation
+  if (err.name === "ValidationError") {
     statusCode = 400;
     message = Object.values(err.errors)
       .map((val) => val.message)
       .join(", ");
   }
 
-  //JWT Errors
+  // JWT errors
   if (err.name === "JsonWebTokenError") {
     statusCode = 401;
-    message = "Inalid Token";
+    message = "Invalid Token";
   }
 
   if (err.name === "TokenExpiredError") {
@@ -28,21 +29,9 @@ const errorHandler = (err, req, res, next) => {
     message = "Token Expired";
   }
 
-  res.status(statusCode).json({
+  return res.status(statusCode).json({
     success: false,
     message,
-  });
-
-  if (err.isOperational) {
-    return res.status(err.statusCode).json({
-      success: false,
-      message: err.message,
-    });
-  }
-
-  return res.status(500).json({
-    success: false,
-    message: "Something went wrong",
   });
 };
 
