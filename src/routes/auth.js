@@ -7,10 +7,11 @@ const AppError = require("../middlewares/errorHandler");
 const asyncHandler = require("../util/asyncHandler");
 
 const authRouter = express.Router();
+const isProduction = process.env.NODE_ENV === "production";
 
 authRouter.post(
   "/login",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req, res, next) => {
     const { email, password } = req.body;
 
     if (!validator.isEmail(email)) {
@@ -27,11 +28,12 @@ authRouter.post(
       return next(new AppError("Invalid credentials", 401));
     } else {
       const token = await user.getJWT();
+
       res.cookie("token", token, {
         httpOnly: true,
         maxAge: 7 * 24 * 60 * 60 * 1000,
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        secure: process.env.NODE_ENV === "production",
+        secure: isProduction,
+        sameSite: isProduction ? "none" : "lax",
         path: "/",
       });
       res.status(200).json({
@@ -83,8 +85,8 @@ authRouter.post(
     res.cookie("token", token, {
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      secure: process.env.NODE_ENV === "production",
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
       path: "/",
     });
 
