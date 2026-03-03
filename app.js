@@ -7,7 +7,6 @@ dotenv.config({ path: envFile });
 
 const express = require("express");
 const http = require("http");
-const { Server } = require("socket.io");
 const { initSocket } = require("./src/socket");
 
 const connectDB = require("./src/config/database");
@@ -53,6 +52,13 @@ app.use("/api/v1/profile", profileRouter);
 app.use("/api/v1/request", requestsRouter);
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/messages", messageRouter);
+
+app.get("/", (req, res) => {
+  res.status(200).json({
+    status: "success",
+    message: "DevTinder API running",
+  });
+});
 
 app.use((req, res, next) => {
   next(new AppError(`Route ${req.originalUrl} not found`, 404));
