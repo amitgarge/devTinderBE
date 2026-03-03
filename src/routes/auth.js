@@ -3,7 +3,7 @@ const validator = require("validator");
 const bcrypt = require("bcrypt");
 const User = require("../models/user");
 const { validateSignup } = require("../util/validators/user.validator");
-const AppError = require("../middlewares/errorHandler");
+const AppError = require("../util/AppError");
 const asyncHandler = require("../util/asyncHandler");
 
 const authRouter = express.Router();
