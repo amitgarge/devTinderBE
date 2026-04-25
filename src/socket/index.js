@@ -50,11 +50,50 @@ const initSocket = (server) => {
     }
   });
 
-  io.on("connect", (socket) => {
+  io.on("connect", async (socket) => {
     const userId = socket.userId;
     console.log("User connected:", socket.userId, "| socket:", socket.id);
     //save socket <-> user mapping
     onlineUsers.set(userId, socket.id);
+
+    //DELIVERY SYNC on login
+
+    try {
+      console.log("DELIVERY SYNC triggered for:", userId);
+      const undeliveredMessages = await Message.find({
+        targetUserId: userId,
+        delivered: { $ne: true },
+      });
+
+      if (undeliveredMessages.length > 0) {
+        const messageIds = undeliveredMessages.map((msg) => msg._id);
+
+        await Message.updateMany(
+          {
+            _id: { $in: messageIds },
+          },
+          {
+            $set: {
+              delivered: true,
+              deliveredAt: new Date(),
+            },
+          },
+        );
+
+        //Notify Senders
+        undeliveredMessages.forEach((msg) => {
+          const senderSocketId = onlineUsers.get(msg.senderId.toString());
+
+          if (senderSocketId) {
+            io.to(senderSocketId).emit("message_delivered", {
+              messageId: msg._id,
+            });
+          }
+        });
+      }
+    } catch (err) {
+      console.error("Delivery Sync Error: ", err);
+    }
 
     socket.on("get_online_users", () => {
       socket.emit("online_users", Array.from(onlineUsers.keys()));
@@ -101,10 +140,48 @@ const initSocket = (server) => {
 
       socket.join(roomId);
 
+      await Message.updateMany(
+        {
+          senderId: targetUserId,
+          targetUserId: currentUserId,
+          seen: { $ne: true },
+        },
+        {
+          $set: {
+            seen: true,
+            seenAt: new Date(),
+          },
+        },
+      );
+
+      //Notify sender that messages are seen
+      io.to(roomId).emit("messages_seen", {
+        seenBy: currentUserId,
+      });
+
+      await Message.updateMany(
+        {
+          senderId: targetUserId,
+          targetUserId: currentUserId,
+          delivered: { $ne: true },
+        },
+        {
+          $set: {
+            delivered: true,
+            deliveredAt: new Date(),
+          },
+        },
+      );
+
+      io.to(roomId).emit("message_delivered_bulk", {
+        deliveredTo: currentUserId,
+      });
+
       console.log(`User ${currentUserId} joined room ${roomId}`);
     });
 
     socket.on("send_message", async (data) => {
+      console.log("EMITTING message_delivered to sender:", senderId);
       try {
         const { targetUserId, text } = data;
 
@@ -120,7 +197,6 @@ const initSocket = (server) => {
               toUserId: targetUserId,
               status: "accepted",
             },
-
             {
               fromUserId: targetUserId,
               toUserId: senderId,
@@ -131,21 +207,66 @@ const initSocket = (server) => {
 
         if (!connection) {
           socket.emit("error", "Not authorized to chat");
-
           return;
         }
 
         const roomId = generateRoomId(senderId, targetUserId);
 
-        // SAVE TO DATABASE
+        const receiverSocketId = onlineUsers.get(targetUserId.toString());
+
+        let isSeen = false;
+        let seenAt = null;
+
+        let isDelivered = false;
+        let deliveredAt = null;
+
+        // CHECK if receiver is in same room (chat open)
+        if (receiverSocketId) {
+          isDelivered = true;
+          deliveredAt = new Date();
+
+          const socketsInRoom = await io.in(roomId).fetchSockets();
+
+          const isReceiverInRoom = socketsInRoom.some(
+            (s) => s.userId === targetUserId,
+          );
+
+          if (isReceiverInRoom) {
+            isSeen = true;
+            seenAt = new Date();
+          }
+        }
+
+        // SAVE MESSAGE
         const newMessage = await Message.create({
           senderId,
           targetUserId,
           text,
+          seen: isSeen,
+          seenAt,
+          delivered: isDelivered,
+          deliveredAt,
         });
 
-        // emit saved message
+        // EMIT MESSAGE
         io.to(roomId).emit("receive_message", newMessage);
+
+        // "DELIVERED" LOGIC
+        if (receiverSocketId) {
+          const senderSocketId = onlineUsers.get(senderId.toString());
+          if (senderSocketId) {
+            io.to(senderSocketId).emit("message_delivered", {
+              messageId: newMessage._id,
+            });
+          }
+        }
+
+        // "SEEN" Logic
+        if (isSeen) {
+          io.to(roomId).emit("messages_seen", {
+            seenBy: targetUserId,
+          });
+        }
       } catch (error) {
         console.error("Send message error:", error);
       }
